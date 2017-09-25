@@ -1,8 +1,130 @@
 {
     'variables':{
-		#'library' : 'static_library',
-		'library' : 'shared_library',
+		'library' : 'static_library',
+		#'library' : 'shared_library',
 	},
+    'target_defaults': {
+		'win_delay_load_hook': 'false',
+		'msvs_settings': {
+			# This magical incantation is necessary because VC++ will compile
+			# object files to same directory... even if they have the same name!
+			'VCCLCompilerTool': {
+			  'ObjectFile': '$(IntDir)/%(RelativeDir)/',
+			  #'AdditionalOptions': [ '/EHsc', '/wd4244']
+			  'WarningLevel': 0,
+			  'WholeProgramOptimization': 'false',
+			  'AdditionalOptions': ['/EHsc'],
+			  'ExceptionHandling' : 1, #/EHsc
+			},
+			
+		},
+		'configurations':{
+			'Debug':{
+				'conditions': [
+				  ['target_arch=="x64"', {
+					'msvs_configuration_platform': 'x64',
+				  }],
+				  ['1==1',{
+
+					'defines':[
+						'DEBUG',
+					],
+					'msvs_settings': {		
+						'VCCLCompilerTool': {
+						  #'WholeProgramOptimization' : 'false',
+						  #'AdditionalOptions': ['/GL-','/w'], #['/wd4244' ,'/wd4018','/wd4133' ,'/wd4090'] #GL- was added because the forced optimization coming from node-gyp is disturbing the weird coding style from ffmpeg.
+						  'WarningLevel': 0,
+						  'WholeProgramOptimization': 'false',
+						  'AdditionalOptions': ['/EHsc'],
+						  'ExceptionHandling' : 1, #/EHsc
+						  'RuntimeLibrary': 3, # dll debug
+						},
+						'VCLinkerTool' : {
+							'GenerateDebugInformation' : 'true',
+							'conditions':[
+								['target_arch=="x64"', {
+									'TargetMachine' : 17 # /MACHINE:X64
+								}],
+							],
+							
+						}
+					}
+				
+				  }],
+				],
+				
+			},
+			'Release':{
+				'conditions': [
+				  ['target_arch=="x64"', {
+					'msvs_configuration_platform': 'x64',
+				  }],
+				],
+				'msvs_settings': {			
+					'VCCLCompilerTool': {
+						'WholeProgramOptimization' : 'false',
+						#'AdditionalOptions': ['/GL-','/w'], #['/wd4244' ,'/wd4018','/wd4133' ,'/wd4090'] #GL- was added because the forced optimization coming from node-gyp is disturbing the weird coding style from ffmpeg.
+						'WarningLevel': 0,
+						  'WholeProgramOptimization': 'false',
+						  'AdditionalOptions': ['/EHsc'],
+						  'ExceptionHandling' : 1, #/EHsc
+						  'RuntimeLibrary': 2, # dll release
+					},
+					'VCLinkerTool' : {
+						'conditions':[
+							['target_arch=="x64"', {
+								'TargetMachine' : 17 # /MACHINE:X64
+							}],
+						],
+						
+					}
+				}
+			},
+		},
+		
+		'conditions': [
+			['OS == "win"',{
+				'defines':[
+                    'WIN32',
+					'DELAYIMP_INSECURE_WRITABLE_HOOKS'
+				],
+			}],
+		  ['OS != "win"', {
+			'defines': [
+			  '_LARGEFILE_SOURCE',
+			  '_FILE_OFFSET_BITS=64',
+			  
+			],
+			'cflags':[
+				'-fPIC',
+				'-fexceptions',
+			],
+			'cflags!': [ '-fno-exceptions' ],
+			'cflags_cc!': [ '-fno-exceptions' ],
+			'conditions': [
+				['OS=="mac"', {
+				  'xcode_settings': {
+					'GCC_ENABLE_CPP_EXCEPTIONS': 'YES'
+				  }
+				}]
+			],
+			'conditions': [
+			  ['OS=="solaris"', {
+				'cflags': [ '-pthreads' ],
+			  }],
+			  ['OS not in "solaris android"', {
+				'cflags': [ '-pthread' ],
+			  }],
+			],
+		}],
+		['OS=="android"',{
+			'defines':[
+				'ANDROID'
+			],
+		  }],
+		],
+	  },
+
     'targets':[
         {
             "target_name":"copy_non_standard_extensions",
@@ -189,6 +311,7 @@
             ],
             'direct_dependent_settings': {
                 'include_dirs': [
+                    "src\c++\src",
                 ],
             },
             'conditions':[
@@ -308,7 +431,7 @@
                 "src/c++/src/kj/string.h",
                 "src/c++/src/kj/test-helpers.c++.cpp",
                 "src/c++/src/kj/test-test.c++.cpp",
-                "src/c++/src/kj/test.c++.cpp",
+                #"src/c++/src/kj/test.c++.cpp",
                 "src/c++/src/kj/test.h",
                 "src/c++/src/kj/thread-test.c++.cpp",
                 "src/c++/src/kj/thread.c++.cpp",
@@ -328,7 +451,240 @@
             ]
         },
         {
+            "target_name":"capnp-compiler-dependencies",
+            'type':'static_library',
+            'defines':[	
+            ],
+            'include_dirs':[
+                'config',
+                "src\c++\src",
+            ],
+            'dependencies':[
+                'copy_non_standard_extensions',
+                'kj',
+                'libcapnp',
+            ],
+            'direct_dependent_settings': {
+                'include_dirs': [
+                    "src\c++\src",
+                ],
+            },
+            
+            'sources':[
+                "src/c++/src/capnp/compiler/capnp-test.ekam-rule",
+                "src/c++/src/capnp/compiler/capnp-test.sh",
+                
+                "src/c++/src/capnp/compiler/capnp.ekam-manifest",
+                
+                
+                "src/c++/src/capnp/compiler/compiler.c++.cpp",
+                "src/c++/src/capnp/compiler/compiler.h",
+                "src/c++/src/capnp/compiler/error-reporter.c++.cpp",
+                "src/c++/src/capnp/compiler/error-reporter.h",
+                #"src/c++/src/capnp/compiler/evolution-test.c++.cpp",
+                "src/c++/src/capnp/compiler/grammar.capnp",
+                "src/c++/src/capnp/compiler/grammar.capnp.c++.cpp",
+                "src/c++/src/capnp/compiler/grammar.capnp.h",
+                #"src/c++/src/capnp/compiler/lexer-test.c++.cpp",
+                "src/c++/src/capnp/compiler/lexer.c++.cpp",
+                "src/c++/src/capnp/compiler/lexer.capnp",
+                "src/c++/src/capnp/compiler/lexer.capnp.c++.cpp",
+                "src/c++/src/capnp/compiler/lexer.capnp.h",
+                "src/c++/src/capnp/compiler/lexer.h",
+                "src/c++/src/capnp/compiler/module-loader.c++.cpp",
+                "src/c++/src/capnp/compiler/module-loader.h",
+                "src/c++/src/capnp/compiler/node-translator.c++.cpp",
+                "src/c++/src/capnp/compiler/node-translator.h",
+                "src/c++/src/capnp/compiler/parser.c++.cpp",
+                "src/c++/src/capnp/compiler/parser.h",
+                #"src/c++/src/capnp/compiler/type-id-test.c++.cpp",
+                "src/c++/src/capnp/compiler/type-id.c++.cpp",
+                "src/c++/src/capnp/compiler/type-id.h",
+
+
+                ##"src/c++/src/capnp/afl-testcase.c++.cpp",
+                ##"src/c++/src/capnp/any-test.c++.cpp",
+                #"src/c++/src/capnp/any.c++.cpp",
+                #"src/c++/src/capnp/any.h",
+                #"src/c++/src/capnp/arena.c++.cpp",
+                #"src/c++/src/capnp/arena.h",
+                ##"src/c++/src/capnp/blob-test.c++.cpp",
+                #"src/c++/src/capnp/blob.c++.cpp",
+                #"src/c++/src/capnp/blob.h",
+                #"src/c++/src/capnp/bootstrap-test.ekam-rule",
+                #"src/c++/src/capnp/c++.capnp",
+                #"src/c++/src/capnp/c++.capnp.c++.cpp",
+                #"src/c++/src/capnp/c++.capnp.h",
+                ##"src/c++/src/capnp/canonicalize-test.c++.cpp",
+                ##"src/c++/src/capnp/capability-test.c++.cpp",
+                #"src/c++/src/capnp/capability.c++.cpp",
+                #"src/c++/src/capnp/capability.h",
+                #"src/c++/src/capnp/capnpc.ekam-rule",
+                #"src/c++/src/capnp/CMakeLists.txt",
+                ##"src/c++/src/capnp/common-test.c++.cpp",
+                #"src/c++/src/capnp/common.h",
+                #"src/c++/src/capnp/compat",
+                ##"src/c++/src/capnp/compat/json-test.c++.cpp",
+                #"src/c++/src/capnp/compat/json.c++.cpp",
+                #"src/c++/src/capnp/compat/json.capnp",
+                #"src/c++/src/capnp/compat/json.capnp.c++.cpp",
+                #"src/c++/src/capnp/compat/json.capnp.h",
+                #"src/c++/src/capnp/compat/json.h",
+               #
+                #"src/c++/src/capnp/dynamic-capability.c++.cpp",
+                ##"src/c++/src/capnp/dynamic-test.c++.cpp",
+                #"src/c++/src/capnp/dynamic.c++.cpp",
+                #"src/c++/src/capnp/dynamic.h",
+                ##"src/c++/src/capnp/encoding-test.c++.cpp",
+                ##"src/c++/src/capnp/endian-fallback-test.c++.cpp",
+                #"src/c++/src/capnp/endian-reverse-test.c++.cpp",
+                ##"src/c++/src/capnp/endian-test.c++.cpp",
+                #"src/c++/src/capnp/endian.h",
+                ##"src/c++/src/capnp/ez-rpc-test.c++.cpp",
+                #"src/c++/src/capnp/ez-rpc.c++.cpp",
+                #"src/c++/src/capnp/ez-rpc.h",
+                ##"src/c++/src/capnp/fuzz-test.c++.cpp",
+                #"src/c++/src/capnp/generated-header-support.h",
+                ##"src/c++/src/capnp/layout-test.c++.cpp",
+                #"src/c++/src/capnp/layout.c++.cpp",
+                #"src/c++/src/capnp/layout.h",
+                #"src/c++/src/capnp/list.c++.cpp",
+                #"src/c++/src/capnp/list.h",
+                ##"src/c++/src/capnp/membrane-test.c++.cpp",
+                #"src/c++/src/capnp/membrane.c++.cpp",
+                #"src/c++/src/capnp/membrane.h",
+                ##"src/c++/src/capnp/message-test.c++.cpp",
+                #"src/c++/src/capnp/message.c++.cpp",
+                #"src/c++/src/capnp/message.h",
+                ##"src/c++/src/capnp/orphan-test.c++.cpp",
+                #"src/c++/src/capnp/orphan.h",
+                #"src/c++/src/capnp/persistent.capnp",
+                #"src/c++/src/capnp/persistent.capnp.c++.cpp",
+                #"src/c++/src/capnp/persistent.capnp.h",
+                #"src/c++/src/capnp/pointer-helpers.h",
+                #"src/c++/src/capnp/pretty-print.h",
+                #"src/c++/src/capnp/raw-schema.h",
+                #"src/c++/src/capnp/rpc-prelude.h",
+                ##"src/c++/src/capnp/rpc-test.c++.cpp",
+                ##"src/c++/src/capnp/rpc-twoparty-test.c++.cpp",
+                #"src/c++/src/capnp/rpc-twoparty.c++.cpp",
+                #"src/c++/src/capnp/rpc-twoparty.capnp",
+                #"src/c++/src/capnp/rpc-twoparty.capnp.c++.cpp",
+                #"src/c++/src/capnp/rpc-twoparty.capnp.h",
+                #"src/c++/src/capnp/rpc-twoparty.h",
+                #"src/c++/src/capnp/rpc.c++.cpp",
+                #"src/c++/src/capnp/rpc.capnp",
+                #"src/c++/src/capnp/rpc.capnp.c++.cpp",
+                #"src/c++/src/capnp/rpc.capnp.h",
+                #"src/c++/src/capnp/rpc.h",
+                #"src/c++/src/capnp/schema-lite.h",
+                ##"src/c++/src/capnp/schema-loader-test.c++.cpp",
+                #"src/c++/src/capnp/schema-loader.c++.cpp",
+                #"src/c++/src/capnp/schema-loader.h",
+                ##"src/c++/src/capnp/schema-parser-test.c++.cpp",
+                #"src/c++/src/capnp/schema-parser.c++.cpp",
+                #"src/c++/src/capnp/schema-parser.h",
+                ##"src/c++/src/capnp/schema-test.c++.cpp",
+                #"src/c++/src/capnp/schema.c++.cpp",
+                #"src/c++/src/capnp/schema.capnp",
+                #"src/c++/src/capnp/schema.capnp.c++.cpp",
+                #"src/c++/src/capnp/schema.capnp.h",
+                #"src/c++/src/capnp/schema.h",
+                ##"src/c++/src/capnp/serialize-async-test.c++.cpp",
+                #"src/c++/src/capnp/serialize-async.c++.cpp",
+                #"src/c++/src/capnp/serialize-async.h",
+                ##"src/c++/src/capnp/serialize-packed-test.c++.cpp",
+                #"src/c++/src/capnp/serialize-packed.c++.cpp",
+                #"src/c++/src/capnp/serialize-packed.h",
+                ##"src/c++/src/capnp/serialize-test.c++.cpp",
+                ##"src/c++/src/capnp/serialize-text-test.c++.cpp",
+                #"src/c++/src/capnp/serialize-text.c++.cpp",
+                #"src/c++/src/capnp/serialize-text.h",
+                #"src/c++/src/capnp/serialize.c++.cpp",
+                #"src/c++/src/capnp/serialize.h",
+                ##"src/c++/src/capnp/stringify-test.c++.cpp",
+                #"src/c++/src/capnp/stringify.c++.cpp",
+                #"src/c++/src/capnp/test-import.capnp",
+                #"src/c++/src/capnp/test-import2.capnp",
+                ##"src/c++/src/capnp/test-util.c++.cpp",
+                #"src/c++/src/capnp/test-util.h",
+                #"src/c++/src/capnp/test.capnp",
+                #"src/c++/src/capnp/testdata/errors.capnp.nobuild",
+                #"src/c++/src/capnp/testdata/errors.txt",
+                #"src/c++/src/capnp/testdata/lists.binary",
+                #"src/c++/src/capnp/testdata/packedflat",
+                #"src/c++/src/capnp/testdata/pretty.json",
+                #"src/c++/src/capnp/testdata/pretty.txt",
+                #"src/c++/src/capnp/testdata/segmented-packed",
+                #"src/c++/src/capnp/testdata/short.json",
+                #"src/c++/src/capnp/testdata/short.txt",
+            ]
+        },
+        {
             "target_name":"capnp",
+            'type':'executable',
+            'defines':[	
+            ],
+            'include_dirs':[
+                'config',
+                "src\c++\src",
+            ],
+            'dependencies':[
+                'capnp-compiler-dependencies',
+            ],
+            'direct_dependent_settings': {
+                'include_dirs': [
+                ],
+            },
+            
+            'sources':[
+               "src/c++/src/capnp/compiler/capnp.c++.cpp",
+            ]
+        },
+        {
+            "target_name":"capnp-c++",
+            'type':'executable',
+            'defines':[	
+            ],
+            'include_dirs':[
+                'config',
+                "src\c++\src",
+            ],
+            'dependencies':[
+                'capnp-compiler-dependencies',
+            ],
+            'direct_dependent_settings': {
+                'include_dirs': [
+                ],
+            },
+            
+            'sources':[
+               "src/c++/src/capnp/compiler/capnpc-c++.c++.cpp",
+            ]
+        },
+        {
+            "target_name":"capnpc-capnp",
+            'type':'executable',
+            'defines':[	
+            ],
+            'include_dirs':[
+                'config',
+                "src\c++\src",
+            ],
+            'dependencies':[
+                'capnp-compiler-dependencies',
+            ],
+            'direct_dependent_settings': {
+                'include_dirs': [
+                ],
+            },
+            
+            'sources':[
+               "src/c++/src/capnp/compiler/capnpc-capnp.c++.cpp",
+            ]
+        },
+        {
+            "target_name":"libcapnp",
             'type':'<(library)',
             'defines':[	
             ],
@@ -341,95 +697,66 @@
             ],
             'direct_dependent_settings': {
                 'include_dirs': [
-
+                    "src\c++\src",
                 ],
             },
             
             'sources':[
-                "src/c++/src/capnp/afl-testcase.c++.cpp",
-                "src/c++/src/capnp/any-test.c++.cpp",
+                #"src/c++/src/capnp/afl-testcase.c++.cpp",
+                #"src/c++/src/capnp/any-test.c++.cpp",
                 "src/c++/src/capnp/any.c++.cpp",
                 "src/c++/src/capnp/any.h",
                 "src/c++/src/capnp/arena.c++.cpp",
                 "src/c++/src/capnp/arena.h",
-                "src/c++/src/capnp/blob-test.c++.cpp",
+                #"src/c++/src/capnp/blob-test.c++.cpp",
                 "src/c++/src/capnp/blob.c++.cpp",
                 "src/c++/src/capnp/blob.h",
-                "src/c++/src/capnp/bootstrap-test.ekam-rule",
+                #"src/c++/src/capnp/bootstrap-test.ekam-rule",
                 "src/c++/src/capnp/c++.capnp",
                 "src/c++/src/capnp/c++.capnp.c++.cpp",
                 "src/c++/src/capnp/c++.capnp.h",
-                "src/c++/src/capnp/canonicalize-test.c++.cpp",
-                "src/c++/src/capnp/capability-test.c++.cpp",
+                #"src/c++/src/capnp/canonicalize-test.c++.cpp",
+                #"src/c++/src/capnp/capability-test.c++.cpp",
                 "src/c++/src/capnp/capability.c++.cpp",
                 "src/c++/src/capnp/capability.h",
                 "src/c++/src/capnp/capnpc.ekam-rule",
                 "src/c++/src/capnp/CMakeLists.txt",
-                "src/c++/src/capnp/common-test.c++.cpp",
+                #"src/c++/src/capnp/common-test.c++.cpp",
                 "src/c++/src/capnp/common.h",
                 "src/c++/src/capnp/compat",
-                "src/c++/src/capnp/compat/json-test.c++.cpp",
+                #"src/c++/src/capnp/compat/json-test.c++.cpp",
                 "src/c++/src/capnp/compat/json.c++.cpp",
                 "src/c++/src/capnp/compat/json.capnp",
                 "src/c++/src/capnp/compat/json.capnp.c++.cpp",
                 "src/c++/src/capnp/compat/json.capnp.h",
                 "src/c++/src/capnp/compat/json.h",
-                "src/c++/src/capnp/compiler",
-                "src/c++/src/capnp/compiler/capnp-test.ekam-rule",
-                "src/c++/src/capnp/compiler/capnp-test.sh",
-                "src/c++/src/capnp/compiler/capnp.c++.cpp",
-                "src/c++/src/capnp/compiler/capnp.ekam-manifest",
-                "src/c++/src/capnp/compiler/capnpc-c++.c++.cpp",
-                "src/c++/src/capnp/compiler/capnpc-capnp.c++.cpp",
-                "src/c++/src/capnp/compiler/compiler.c++.cpp",
-                "src/c++/src/capnp/compiler/compiler.h",
-                "src/c++/src/capnp/compiler/error-reporter.c++.cpp",
-                "src/c++/src/capnp/compiler/error-reporter.h",
-                "src/c++/src/capnp/compiler/evolution-test.c++.cpp",
-                "src/c++/src/capnp/compiler/grammar.capnp",
-                "src/c++/src/capnp/compiler/grammar.capnp.c++.cpp",
-                "src/c++/src/capnp/compiler/grammar.capnp.h",
-                "src/c++/src/capnp/compiler/lexer-test.c++.cpp",
-                "src/c++/src/capnp/compiler/lexer.c++.cpp",
-                "src/c++/src/capnp/compiler/lexer.capnp",
-                "src/c++/src/capnp/compiler/lexer.capnp.c++.cpp",
-                "src/c++/src/capnp/compiler/lexer.capnp.h",
-                "src/c++/src/capnp/compiler/lexer.h",
-                "src/c++/src/capnp/compiler/module-loader.c++.cpp",
-                "src/c++/src/capnp/compiler/module-loader.h",
-                "src/c++/src/capnp/compiler/node-translator.c++.cpp",
-                "src/c++/src/capnp/compiler/node-translator.h",
-                "src/c++/src/capnp/compiler/parser.c++.cpp",
-                "src/c++/src/capnp/compiler/parser.h",
-                "src/c++/src/capnp/compiler/type-id-test.c++.cpp",
-                "src/c++/src/capnp/compiler/type-id.c++.cpp",
-                "src/c++/src/capnp/compiler/type-id.h",
+               
                 "src/c++/src/capnp/dynamic-capability.c++.cpp",
-                "src/c++/src/capnp/dynamic-test.c++.cpp",
+                #"src/c++/src/capnp/dynamic-test.c++.cpp",
                 "src/c++/src/capnp/dynamic.c++.cpp",
                 "src/c++/src/capnp/dynamic.h",
-                "src/c++/src/capnp/encoding-test.c++.cpp",
-                "src/c++/src/capnp/endian-fallback-test.c++.cpp",
-                "src/c++/src/capnp/endian-reverse-test.c++.cpp",
-                "src/c++/src/capnp/endian-test.c++.cpp",
+                #"src/c++/src/capnp/encoding-test.c++.cpp",
+                #"src/c++/src/capnp/endian-fallback-test.c++.cpp",
+                #"src/c++/src/capnp/endian-reverse-test.c++.cpp",
+                #"src/c++/src/capnp/endian-test.c++.cpp",
                 "src/c++/src/capnp/endian.h",
-                "src/c++/src/capnp/ez-rpc-test.c++.cpp",
+                #"src/c++/src/capnp/ez-rpc-test.c++.cpp",
                 "src/c++/src/capnp/ez-rpc.c++.cpp",
                 "src/c++/src/capnp/ez-rpc.h",
-                "src/c++/src/capnp/fuzz-test.c++.cpp",
+                #"src/c++/src/capnp/fuzz-test.c++.cpp",
                 "src/c++/src/capnp/generated-header-support.h",
-                "src/c++/src/capnp/layout-test.c++.cpp",
+                #"src/c++/src/capnp/layout-test.c++.cpp",
                 "src/c++/src/capnp/layout.c++.cpp",
                 "src/c++/src/capnp/layout.h",
                 "src/c++/src/capnp/list.c++.cpp",
                 "src/c++/src/capnp/list.h",
-                "src/c++/src/capnp/membrane-test.c++.cpp",
+                #"src/c++/src/capnp/membrane-test.c++.cpp",
                 "src/c++/src/capnp/membrane.c++.cpp",
                 "src/c++/src/capnp/membrane.h",
-                "src/c++/src/capnp/message-test.c++.cpp",
+                #"src/c++/src/capnp/message-test.c++.cpp",
                 "src/c++/src/capnp/message.c++.cpp",
                 "src/c++/src/capnp/message.h",
-                "src/c++/src/capnp/orphan-test.c++.cpp",
+                #"src/c++/src/capnp/orphan-test.c++.cpp",
                 "src/c++/src/capnp/orphan.h",
                 "src/c++/src/capnp/persistent.capnp",
                 "src/c++/src/capnp/persistent.capnp.c++.cpp",
@@ -438,8 +765,8 @@
                 "src/c++/src/capnp/pretty-print.h",
                 "src/c++/src/capnp/raw-schema.h",
                 "src/c++/src/capnp/rpc-prelude.h",
-                "src/c++/src/capnp/rpc-test.c++.cpp",
-                "src/c++/src/capnp/rpc-twoparty-test.c++.cpp",
+                #"src/c++/src/capnp/rpc-test.c++.cpp",
+                #"src/c++/src/capnp/rpc-twoparty-test.c++.cpp",
                 "src/c++/src/capnp/rpc-twoparty.c++.cpp",
                 "src/c++/src/capnp/rpc-twoparty.capnp",
                 "src/c++/src/capnp/rpc-twoparty.capnp.c++.cpp",
@@ -451,51 +778,51 @@
                 "src/c++/src/capnp/rpc.capnp.h",
                 "src/c++/src/capnp/rpc.h",
                 "src/c++/src/capnp/schema-lite.h",
-                "src/c++/src/capnp/schema-loader-test.c++.cpp",
+                #"src/c++/src/capnp/schema-loader-test.c++.cpp",
                 "src/c++/src/capnp/schema-loader.c++.cpp",
                 "src/c++/src/capnp/schema-loader.h",
-                "src/c++/src/capnp/schema-parser-test.c++.cpp",
+                #"src/c++/src/capnp/schema-parser-test.c++.cpp",
                 "src/c++/src/capnp/schema-parser.c++.cpp",
                 "src/c++/src/capnp/schema-parser.h",
-                "src/c++/src/capnp/schema-test.c++.cpp",
+                #"src/c++/src/capnp/schema-test.c++.cpp",
                 "src/c++/src/capnp/schema.c++.cpp",
                 "src/c++/src/capnp/schema.capnp",
                 "src/c++/src/capnp/schema.capnp.c++.cpp",
                 "src/c++/src/capnp/schema.capnp.h",
                 "src/c++/src/capnp/schema.h",
-                "src/c++/src/capnp/serialize-async-test.c++.cpp",
+                #"src/c++/src/capnp/serialize-async-test.c++.cpp",
                 "src/c++/src/capnp/serialize-async.c++.cpp",
                 "src/c++/src/capnp/serialize-async.h",
-                "src/c++/src/capnp/serialize-packed-test.c++.cpp",
+                #"src/c++/src/capnp/serialize-packed-test.c++.cpp",
                 "src/c++/src/capnp/serialize-packed.c++.cpp",
                 "src/c++/src/capnp/serialize-packed.h",
-                "src/c++/src/capnp/serialize-test.c++.cpp",
-                "src/c++/src/capnp/serialize-text-test.c++.cpp",
+                #"src/c++/src/capnp/serialize-test.c++.cpp",
+                #"src/c++/src/capnp/serialize-text-test.c++.cpp",
                 "src/c++/src/capnp/serialize-text.c++.cpp",
                 "src/c++/src/capnp/serialize-text.h",
                 "src/c++/src/capnp/serialize.c++.cpp",
                 "src/c++/src/capnp/serialize.h",
-                "src/c++/src/capnp/stringify-test.c++.cpp",
+                #"src/c++/src/capnp/stringify-test.c++.cpp",
                 "src/c++/src/capnp/stringify.c++.cpp",
-                "src/c++/src/capnp/test-import.capnp",
-                "src/c++/src/capnp/test-import2.capnp",
-                "src/c++/src/capnp/test-util.c++.cpp",
-                "src/c++/src/capnp/test-util.h",
-                "src/c++/src/capnp/test.capnp",
-                "src/c++/src/capnp/testdata",
-                "src/c++/src/capnp/testdata/binary",
-                "src/c++/src/capnp/testdata/errors.capnp.nobuild",
-                "src/c++/src/capnp/testdata/errors.txt",
-                "src/c++/src/capnp/testdata/flat",
-                "src/c++/src/capnp/testdata/lists.binary",
-                "src/c++/src/capnp/testdata/packed",
-                "src/c++/src/capnp/testdata/packedflat",
-                "src/c++/src/capnp/testdata/pretty.json",
-                "src/c++/src/capnp/testdata/pretty.txt",
-                "src/c++/src/capnp/testdata/segmented",
-                "src/c++/src/capnp/testdata/segmented-packed",
-                "src/c++/src/capnp/testdata/short.json",
-                "src/c++/src/capnp/testdata/short.txt",
+                #"src/c++/src/capnp/test-import.capnp",
+                #"src/c++/src/capnp/test-import2.capnp",
+                #"src/c++/src/capnp/test-util.c++.cpp",
+                #"src/c++/src/capnp/test-util.h",
+                #"src/c++/src/capnp/test.capnp",
+                #"src/c++/src/capnp/testdata",
+                #"src/c++/src/capnp/testdata/binary",
+                #"src/c++/src/capnp/testdata/errors.capnp.nobuild",
+                #"src/c++/src/capnp/testdata/errors.txt",
+                #"src/c++/src/capnp/testdata/flat",
+                #"src/c++/src/capnp/testdata/lists.binary",
+                #"src/c++/src/capnp/testdata/packed",
+                #"src/c++/src/capnp/testdata/packedflat",
+                #"src/c++/src/capnp/testdata/pretty.json",
+                #"src/c++/src/capnp/testdata/pretty.txt",
+                #"src/c++/src/capnp/testdata/segmented",
+                #"src/c++/src/capnp/testdata/segmented-packed",
+                #"src/c++/src/capnp/testdata/short.json",
+                #"src/c++/src/capnp/testdata/short.txt",
             ]
         },
         {
