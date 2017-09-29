@@ -157,8 +157,8 @@
 				['OS == "win"',{
 					'link_settings': {
 						'libraries': [
-							'ws2_32.lib',
-                            'Advapi32.lib'
+							'-lws2_32.lib',
+                            '-lAdvapi32.lib'
 						]
 					}
 				}]
@@ -467,7 +467,7 @@
             ]
         },
         {
-            "target_name":"capnp-c++",
+            "target_name":"capnpc-c++",
             'type':'executable',
             'defines':[	
             ],
