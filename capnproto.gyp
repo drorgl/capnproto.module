@@ -139,7 +139,7 @@
             'dependencies':[
                 #'copy_non_standard_extensions'
             ],
-            'direct_dependent_settings': {
+            'all_dependent_settings': {
                 'include_dirs': [
                     "src/c++/src",
                     #"src/c++/src/kj",
